@@ -1,0 +1,125 @@
+#!/usr/bin/env ruby
+require "formatador"
+require "thor"
+require_relative "ancor_faraday"
+
+def ancor_connection
+  AncorFaraday.instance
+end
+
+module CLI
+  class Instance < Thor
+    desc "list", "Lists all instances"
+    def list
+      parsed = JSON.parse(ancor_connection.list_instances.body)
+      parsed.each do |instance|
+        instance['internal_ip'] = instance['interfaces'].map { |interface|
+          interface['ip_address']
+        }.join(', ')
+        if instance['public_ip']
+          instance['public_ip'] = instance['public_ip']['ip_address']
+        end
+      end
+      Formatador.display_table(parsed, ['id', 'name', 'stage', 'planned_stage', 'internal_ip', 'public_ip'])
+    end
+   
+    desc "add <role slug>", "Adds a new instance to a role specified in <role slug>"
+    def add(role_slug)
+      ancor_connection.add_instance(role_slug)
+    end
+
+    desc "remove <old instance id>", "Removes existing instance with id = <old instance id>"
+    def remove(old_id)
+      ancor_connection.remove_instance(old_id)
+    end
+
+    desc "replace <old instance id>", "Replaces instance <old instance id> with a new instance"
+    def replace(old_id)
+      ancor_connection.replace_instance(old_id)
+    end
+  end
+
+  class Goal < Thor
+    desc "list", "Lists all goals"
+    def list
+      parsed = JSON.parse(ancor_connection.list_goals.body)
+      Formatador.display_table(parsed, ['id', 'slug', 'name'])
+    end
+  end
+
+  class Environment < Thor
+    desc "list", "Lists all environments"
+    def list
+      parsed = JSON.parse(ancor_connection.list_envs.body)
+      Formatador.display_table(parsed, ['id', 'slug', 'name','locked'])
+    end
+
+    desc "add <new environment slug>", "Adds an environment named <new environment slug>"
+    def add(slug)
+      ancor_connection.add_env(slug)
+    end
+
+    desc "remove <old environment slug>", "Removes an environment"
+    def remove(slug)
+      ancor_connection.remove_env(slug)
+    end
+
+    option :environment, default: 'production'
+    desc "plan <path to arml file>", "Imports an ARML specification and plans the commitment"
+    def plan(path_to_file)
+      begin
+        ancor_connection.plan(options[:environment], path_to_file)
+      rescue IOError, Errno::ENOENT
+        puts "Cannot upload file to ANCOR. Please make sure the file exists."
+      end
+    end
+
+    option :environment, default: 'production'
+    desc "commit", "Commits the uploaded ARML specification"
+    def commit
+      ancor_connection.commit(options[:environment])
+    end
+  end
+
+  class Role < Thor
+    desc "list", "Lists all roles"
+    def list
+      parsed = JSON.parse(ancor_connection.list_roles.body)
+      Formatador.display_table(parsed, ['id', 'slug', 'name', 'min', 'max'])
+    end
+  end
+
+  class Task < Thor
+    desc "list", "Lists all tasks"
+    def list
+      parsed = JSON.parse(ancor_connection.list_tasks.body)
+      Formatador.display_table(parsed, ['id', 'type', 'state', 'updated_at'])
+    end
+  end 
+
+  class AncorCLI < Thor
+  #ancor <subject> <verb> <targets> <--options>
+    desc "version", "Returns the ANCOR version"
+    def version
+      parsed = JSON.parse(ancor_connection.get_version.body)
+      puts "ANCOR version " + parsed["version"]
+    end
+
+    desc "goal <subcommand>", "Goals related actions e.g., <subcommand> = list"
+    subcommand "goal", Goal
+
+    desc "environment <subcommand>", "Environment related actions e.g., <subcommand> = list"
+    subcommand "environment", Environment
+
+    desc "role <subcommand>", "Roles related actions e.g., <subcommand> = list"
+    subcommand "role", Role
+
+    desc "task <subcommand>", "Tasks related actions e.g., <subcommand> = list"
+    subcommand "task", Task
+
+    desc "instance <subcommand>", "Instance related actions e.g., <subcommand> = list, add, etc."
+    subcommand "instance", Instance
+  end
+ 
+AncorCLI.start(ARGV)
+end
