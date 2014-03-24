@@ -22,7 +22,7 @@ module Ancor
       def plan(path_to_file)
         begin
           spec = File.read(path_to_file)
-          connection.plan(options[:environment], path_to_file)
+          connection.plan(options[:environment], spec)
         rescue IOError, Errno::ENOENT
           puts 'Could not read specification, make sure file path is correct'
         end
