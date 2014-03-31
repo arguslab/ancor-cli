@@ -3,4 +3,8 @@ $LOAD_PATH.unshift(File.expand_path('../../lib', __FILE__))
 
 require 'ancor/cli'
 
-Ancor::CLI.start
+begin
+  Ancor::CLI.start
+rescue Faraday::Error => e
+  $stderr.puts "HTTP client error occured: #{e}"
+end
