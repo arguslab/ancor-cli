@@ -29,6 +29,11 @@ module Ancor
       def replace(old_id)
         connection.replace_instance(old_id)
       end
+
+      desc 'replace_all <role slug>', 'Replaces all instances of the given role with new instances'
+      def replace_all(role_slug)
+        connection.replace_all_instances(role_slug)
+      end
     end # Instance
   end # CLI
 end

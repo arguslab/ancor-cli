@@ -60,7 +60,12 @@ module Ancor
 
       def replace_instance(old_id)
         request_body = { replace: true }
-        post "instances/#{old_id}", CONTENT_TYPE_JSON, request_body.to_json
+        put "instances/#{old_id}", CONTENT_TYPE_JSON, request_body.to_json
+      end
+
+      def replace_all_instances(role_slug)
+        request_body = { role: role_slug }
+        post "instances/#{role_slug}/replace_all", CONTENT_TYPE_JSON, request_body.to_json
       end
 
       def add_env(slug)
